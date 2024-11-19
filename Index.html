@@ -3,27 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Classification</title>
+    <title>Digit Recognizer</title>
 </head>
 <body>
-    <h1>Upload an Image for Classification</h1>
-    <form action="/predict" method="post" enctype="multipart/form-data">
-        <input type="file" name="file">
-        <input type="submit" value="Upload">
-    </form>
-    <div id="result"></div>
+    <h1>Digit Recognizer</h1>
+    <canvas id="canvas" width="200" height="200" style="border:1px solid black; background-color: black;"></canvas>
+    <br>
+    <button onclick="clearCanvas()">Clear</button>
+    <button onclick="predictDigit()">Predict</button>
+    <p id="result"></p>
+
     <script>
-        const form = document.querySelector('form');
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const formData = new FormData(form);
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+
+        canvas.addEventListener('mousedown', () => drawing = true);
+        canvas.addEventListener('mouseup', () => drawing = false);
+        canvas.addEventListener('mousemove', (e) => {
+            if (!drawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            ctx.fillStyle = "white";
+            ctx.beginPath();
+            ctx.arc(x, y, 10, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        function clearCanvas() {
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            document.getElementById("result").textContent = "";
+        }
+
+        async function predictDigit() {
+            const dataURL = canvas.toDataURL('image/png');
             const response = await fetch('/predict', {
                 method: 'POST',
-                body: formData
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: dataURL })
             });
             const result = await response.json();
-            document.getElementById('result').innerText = `Prediction: ${result.prediction}`;
-        });
+            if (result.error) {
+                document.getElementById("result").textContent = `Error: ${result.error}`;
+            } else {
+                document.getElementById("result").textContent = `Digit: ${result.digit}, Confidence: ${result.confidence.toFixed(2)}%`;
+            }
+        }
     </script>
 </body>
 </html>
